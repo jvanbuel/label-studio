@@ -25,6 +25,9 @@ HOSTNAME = ''
 
 
 def get_task_from_labeling_config(config):
+    """ Get task, completions and predictions from labeling config comment,
+        it must start from "<!-- {" and end as "} -->"
+    """
     # try to get task data, completions & predictions from config comment
     task_data, completions, predictions = {}, None, None
     start = config.find('<!-- {')
@@ -62,7 +65,7 @@ def data_examples(mode):
     return _DATA_EXAMPLES[mode]
 
 
-def generate_sample_task_without_check(label_config, mode='upload'):
+def generate_sample_task_without_check(label_config, mode='upload', secure_mode=False):
     """ Generate sample task only
     """
     # load config
@@ -78,58 +81,71 @@ def generate_sample_task_without_check(label_config, mode='upload'):
     task = {}
     parent = xml.findall('.//*[@value]')  # take all tags with value attribute
     for p in parent:
+
+        # Make sure it is a real object tag, extract data placeholder key
         value = p.get('value')
-        value_type = p.get('valueType', p.get('valuetype', None))
+        if not value or not value.startswith('$'):
+            continue
+        value = value[1:]
 
-        # process List
-        if p.tag == 'List':
-            key = p.get('elementValue').replace('$', '')
-            examples['List'] = [{key: 'Hello world'}, {key: 'Goodbye world'}]
+        # detect secured mode - objects served as URLs
+        value_type = p.get('valueType') or p.get('valuetype')
+        only_urls = secure_mode or value_type == 'url'
 
-        # valueType="url"
-        examples['Text'] = examples['TextUrl'] if value_type == 'url' else examples['TextRaw']
-        examples['TimeSeries'] = examples['TimeSeriesUrl'] if value_type == 'url' or value_type is None else examples['TimeSeriesRaw']
+        if p.tag == 'Paragraphs':
+            # Paragraphs special case - replace nameKey/textKey if presented
+            name_key = p.get('nameKey') or p.get('namekey') or 'author'
+            text_key = p.get('textKey') or p.get('textkey') or 'text'
+            task[value] = []
+            for item in examples[p.tag]:
+                task[value].append({name_key: item['author'], text_key: item['text']})
 
-        if value and value[0] == '$':
+        elif p.tag == 'TimeSeries':
+            # TimeSeries special case - generate signals on-the-fly
+            time_column = p.get('timeColumn')
+            value_columns = []
+            for ts_child in p:
+                if ts_child.tag != 'Channel':
+                    continue
+                value_columns.append(ts_child.get('column'))
+            sep = p.get('sep')
+            time_format = p.get('timeFormat')
+
+            if only_urls:
+                # data is URL
+                params = {'time': time_column, 'values': ','.join(value_columns)}
+                if sep:
+                    params['sep'] = sep
+                if time_format:
+                    params['tf'] = time_format
+                task[value] = '/samples/time-series.csv?' + urlencode(params)
+            else:
+                # data is JSON
+                task[value] = generate_time_series_json(time_column, value_columns, time_format)
+
+        else:
+            # Any other object tag - get static examples from data_examples.json
+
+            # patch for valueType="url"
+            examples['Text'] = examples['TextUrl'] if only_urls else examples['TextRaw']
+
             # try get example by variable name
-            by_name = examples.get(value, None)
-            # not found by name, try get example by type
-            task[value[1:]] = examples.get(p.tag, 'Something') if by_name is None else by_name
+            task[value] = examples.get('$' + value)
+            if not task[value]:
+                # not found by name, try get example by type
+                task[value] = examples.get(p.tag, 'Something')
 
-    # TimeSeries special case
-    for ts_tag in xml.findall('.//TimeSeries'):
-        time_column = ts_tag.get('timeColumn')
-        value_columns = []
-        for ts_child in ts_tag:
-            if ts_child.tag != 'Channel':
-                continue
-            value_columns.append(ts_child.get('column'))
-        sep = ts_tag.get('sep')
-        time_format = ts_tag.get('timeFormat')
-
-        tag_value = ts_tag.attrib['value'].lstrip('$')
-        ts_task = task[tag_value]
-        if isinstance(ts_task, str):
-            # data is URL
-            params = {'time': time_column, 'values': ','.join(value_columns)}
-            if sep:
-                params['sep'] = sep
-            if time_format:
-                params['tf'] = time_format
-            task[tag_value] = '/samples/time-series.csv?' + urlencode(params)
-
-        elif isinstance(ts_task, dict):
-            # data is JSON
-            task[tag_value] = generate_time_series_json(time_column, value_columns, time_format)
     return task
 
 
 def _is_strftime_string(s):
-    # very dumb but works
+    # simple way to detect strftime format
     return '%' in s
 
 
 def generate_time_series_json(time_column, value_columns, time_format=None):
+    """ Generate sample for time series
+    """
     n = 100
     if time_format is not None and not _is_strftime_string(time_format):
         time_fmt_map = {
@@ -157,12 +173,30 @@ def generate_sample_task(project):
     return task
 
 
-def set_full_hostname(hostname):
+def get_sample_task(label_config):
+    """ Get sample task from labeling config and combine it with generated sample task
+    """
+    predefined_task, completions, predictions = get_task_from_labeling_config(label_config)
+    generated_task = generate_sample_task_without_check(label_config, mode='editor_preview')
+    if predefined_task is not None:
+        generated_task.update(predefined_task)
+    return generated_task, completions, predictions
+
+
+def set_external_hostname(hostname):
+    """ External host name for LS instance e.g.: label-studio.my-domain.com.
+        It is used for data import paths, they must be absolute paths always,
+        otherwise machine learning backends couldn't access them
+    """
     global HOSTNAME
     HOSTNAME = hostname
 
 
-def get_full_hostname():
+def get_external_hostname():
+    """ External host name for LS instance e.g.: label-studio.my-domain.com.
+        It is used for data import paths, they must be absolute paths always,
+        otherwise machine learning backends couldn't access them
+    """
     global HOSTNAME
     return HOSTNAME
 

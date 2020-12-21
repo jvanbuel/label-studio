@@ -8,13 +8,10 @@ import json
 import werkzeug
 
 from datetime import datetime
-from mixpanel import Mixpanel, MixpanelException
-from copy import deepcopy
-from operator import itemgetter
-from collections import defaultdict
+from mixpanel import Mixpanel
 
 from uuid import uuid4
-from .misc import get_app_version, parse_config, convert_string_to_hash
+from .misc import get_app_version
 from .io import get_config_dir
 
 logger = logging.getLogger(__name__)
@@ -124,7 +121,7 @@ class Analytics(object):
                 'session_id': session.get('session_id'),
                 'user_agent': request.user_agent.string,
                 'url': request.url,
-                'endpoint': request.endpoint,
+                'endpoint': request.endpoint.replace('label_studio.', ''),
                 'method': request.method,
                 'values': dict(request.values),
                 'json': j,

@@ -39,6 +39,8 @@
     <script src="{{ js }}"></script>
   {% endfor %}
 
+  {% block head %}{% endblock %}
+
 </head>
 
 <body>
@@ -55,9 +57,6 @@
   </a>
   <ul id="nav">
   &nbsp;
-    <a href="." class="{% if url_for(request.endpoint) == '/' %}active{% endif %}">Labeling</a>
-
-
     <a href="tasks" class="{% if url_for(request.endpoint) == '/tasks' %}active{% endif %}">Tasks</a>
 
     <a id="menu-import" href="import" class="{% if url_for(request.endpoint) == '/import' %}active{% endif %}"
@@ -69,7 +68,7 @@
     <a href="model" class="{% if url_for(request.endpoint) == '/model' %}active{% endif %}">Model</a>
 
 
-    <a href="setup" class="{% if url_for(request.endpoint) == '/setup' %}active{% endif %}">Setup</a>
+    <a href="settings" class="{% if url_for(request.endpoint) == '/settings' %}active{% endif %}">Settings</a>
 
     <span>
       <a class="outside-links first" href="https://labelstud.io/guide/" target="_blank">Docs</a>
@@ -91,13 +90,12 @@
   <div>Heidi is an Opossum!</div>
 {% endblock %}
 
-<br>
 <script>
   $(function() {
     tippy('[data-tippy-content]', {allowHTML: true});
   });
 
-  // hide logo if it intersect with menu
+  // hide logo if it intersects with menu
   $(window).resize(function() {
     var logo = $('#logo-text');
     logo.show();  // show logo text to calc its position
@@ -109,5 +107,6 @@
     }
   })
 </script>
+
 </body>
 </html>

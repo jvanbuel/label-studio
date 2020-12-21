@@ -2,12 +2,10 @@ import os
 import yaml
 import sys
 
-
 thismodule = sys.modules[__name__]
 
-samples_path = os.path.join(os.path.dirname(__file__), '../','static/samples/')
+samples_path = os.path.join(os.path.dirname(__file__), '../', 'static/samples/')
 cases_path = os.path.join(os.path.dirname(__file__), 'cases/')
-
 
 """
     wrapper for scenarios = []
@@ -32,14 +30,14 @@ cases_path = os.path.join(os.path.dirname(__file__), 'cases/')
     ]}
 """
 
-#def get_scenarios():
+# def get_scenarios():
 scenarios = []
 
 # scenario description
 scenarios.append({'test_common_scenario': [
-        ('prepare', {}),
-        ('config', {
-            'label_config': """
+    ('prepare', {}),
+    ('config', {
+        'label_config': """
                 <View>
                     <Text name="text" value="$text"/>
                     <Choices name="sentiment" toName="text" choice="single">
@@ -49,28 +47,28 @@ scenarios.append({'test_common_scenario': [
                     <Choice value="YYY"/>
                     </Choices>
                 </View>""",
-            }),
-        ('import', {
-            'filepath': samples_path,
-            'filename': 'lorem_ipsum.txt',
-            }),
-        ('get_task', {
-            'task_id': 0,
-            }),
-        ('label', {
-            'task_id': 0,
-            'completion' : {
-                "lead_time":474.108,
-                "result": [{
-                        "id":"_qRv9kaetd",
-                        "from_name":"sentiment",
-                        "to_name":"text",
-                        "type":"choices",
-                        "value":{"choices":["Neutral"]}
-                    }]
-                },
-            }),
-        ('export', {'format':'JSON'})
+    }),
+    ('import', {
+        'filepath': samples_path,
+        'filename': 'lorem_ipsum.txt',
+    }),
+    ('get_task', {
+        'task_id': 0,
+    }),
+    ('label', {
+        'task_id': 0,
+        'completion': {
+            "lead_time": 474.108,
+            "result": [{
+                "id": "_qRv9kaetd",
+                "from_name": "sentiment",
+                "to_name": "text",
+                "type": "choices",
+                "value": {"choices": ["Neutral"]}
+            }]
+        },
+    }),
+    ('export', {'format': 'JSON'})
 ]})
 
 # get yaml scenarios from cases_path
@@ -79,7 +77,7 @@ scenarios.append({'test_common_scenario': [
 # and put variable_name = variable in this module
 for filepath in os.listdir(cases_path):
     with open(os.path.join(cases_path, filepath)) as file:
-        datadoc = yaml.load_all(file)
+        datadoc = yaml.load_all(file, Loader=yaml.FullLoader)
         for datamap in datadoc:
             name = datamap.get('scenario')
             yaml_actions = datamap.get('actions')

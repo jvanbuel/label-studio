@@ -5,14 +5,11 @@ import os
 import pytest
 
 # label_studio
-from label_studio import server
-from label_studio.server import (
-    input_args,
+from label_studio import blueprint as server
+from label_studio.blueprint import (
     validation_error_handler,
 )
-from label_studio.tests.base import (
-    test_client, captured_templates, goc_project,
-)
+from label_studio.tests.base import goc_project
 
 
 @pytest.fixture(autouse=True)
@@ -67,8 +64,9 @@ class TestTasks:
     """Tasks"""
 
     def test_tasks_returns_200(self, test_client, captured_templates):
-        response = test_client.get("/api/tasks")
-        #assert template.name == 'tasks.html'
+        response = test_client.get("/tasks")
+        template, context = captured_templates[0]
+        assert template.name == 'tasks.html'
         assert response.status_code == 200
 
 
@@ -88,7 +86,7 @@ class TestImport:
         response = test_client.get('/import')
         template, context = captured_templates[0]
 
-        assert template.name == 'import.html'
+        assert template.name == 'import_new.html'
         assert response.status_code == 200
 
 
